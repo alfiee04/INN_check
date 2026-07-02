@@ -1,0 +1,30 @@
+{
+  "browser": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "headless": false
+  },
+  "timeouts": {
+    "nav_ms": 60000,
+    "wait_ms": 5000,
+    "long_ms": 10000
+  },
+  "screenshots_dir": "screenshots",
+  "manual_captcha_timeout_sec": 180,
+  "companies": [
+    {
+      "inn": "1616019804",
+      "company_name": "ООО «Инфо-Оберег» ",
+      "executor_name": "Газизова",
+      "address": "420088, Татарстан Респ, г.о. город Казань, г Казань, пр-кт Победы, д. 202 ",
+      "director_fio": "",
+      "person_fio": "",
+      "person_inn": "",
+      "passport_series": "4509",
+      "passport_number": "123456"
+    }
+  ]
+}

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Конструктор config.json — проверка контрагентов</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#161d2e; --panel2:#1d2740; --border:#2a3552;
+    --text:#e7ecf7; --muted:#8b96b3; --accent:#5b8cff; --accent2:#3f6be0;
+    --good:#39c98e; --bad:#e2536b; --warn:#e2a53f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.4;
+  }
+  header{
+    padding:24px 32px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#141b2c,#0f1420);
+  }
+  header h1{margin:0 0 4px; font-size:20px}
+  header p{margin:0; color:var(--muted); font-size:13px}
+  main{max-width:1100px; margin:0 auto; padding:24px 32px 80px}
+  section{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:20px 22px; margin-bottom:20px;
+  }
+  section h2{margin:0 0 4px; font-size:15px}
+  section .hint{color:var(--muted); font-size:12.5px; margin:0 0 16px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:4px}
+  input[type=text], input[type=number], textarea{
+    width:100%; padding:8px 10px; background:var(--panel2); border:1px solid var(--border);
+    border-radius:6px; color:var(--text); font-size:13px; font-family:inherit;
+  }
+  input:focus, textarea:focus{outline:none; border-color:var(--accent)}
+  .field{margin-bottom:10px}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:8px}
+  button{
+    background:var(--accent2); color:#fff; border:none; border-radius:6px;
+    padding:9px 16px; font-size:13px; cursor:pointer; font-weight:500;
+  }
+  button:hover{background:var(--accent)}
+  button.secondary{background:var(--panel2); border:1px solid var(--border); color:var(--text)}
+  button.secondary:hover{border-color:var(--accent)}
+  button.danger{background:transparent; color:var(--bad); border:1px solid var(--bad); padding:5px 10px; font-size:12px}
+  button.small{padding:5px 10px; font-size:12px}
+  table{width:100%; border-collapse:collapse; margin-top:14px; font-size:13px}
+  th, td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top}
+  th{color:var(--muted); font-weight:500; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .empty{color:var(--muted); font-size:13px; padding:14px 0}
+  .badge{
+    display:inline-block; padding:2px 8px; border-radius:100px; font-size:11px;
+    background:rgba(91,140,255,.15); color:var(--accent); margin-left:8px;
+  }
+  .file-drop{
+    border:1.5px dashed var(--border); border-radius:8px; padding:18px; text-align:center;
+    color:var(--muted); font-size:13px; cursor:pointer; transition:.15s;
+  }
+  .file-drop:hover, .file-drop.drag{border-color:var(--accent); color:var(--text)}
+  .footer-actions{
+    position:sticky; bottom:0; background:linear-gradient(0deg,var(--bg) 60%,transparent);
+    padding:20px 0 0; display:flex; gap:10px; justify-content:flex-end;
+  }
+  .status{font-size:12.5px; margin-top:8px}
+  .status.ok{color:var(--good)}
+  .status.err{color:var(--bad)}
+  details summary{cursor:pointer; color:var(--accent); font-size:13px; margin-top:6px}
+  .inline-edit{width:100%}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Конструктор config.json</h1>
+  <p>Собирает файл конфигурации для скрипта проверки контрагентов — без сервера, всё в браузере.</p>
+</header>
+
+<main>
+
+  <!-- ── Загрузка существующего конфига ─────────────────────── -->
+  <section>
+    <h2>1. Загрузить существующий config.json (необязательно)</h2>
+    <p class="hint">Если файл уже есть — загрузите его, чтобы отредактировать и скачать заново.</p>
+    <div class="file-drop" id="loadDrop">Перетащите сюда config.json или нажмите, чтобы выбрать файл</div>
+    <input type="file" id="loadInput" accept="application/json" style="display:none">
+    <div class="status" id="loadStatus"></div>
+  </section>
+
+  <!-- ── Общие настройки браузера/тайм-аутов ────────────────── -->
+  <section>
+    <h2>2. Общие настройки</h2>
+    <p class="hint">Применяются ко всем проверкам в этом конфиге.</p>
+    <div class="grid">
+      <div class="field">
+        <label>Ширина окна браузера</label>
+        <input type="number" id="vwWidth" value="1920">
+      </div>
+      <div class="field">
+        <label>Высота окна браузера</label>
+        <input type="number" id="vwHeight" value="1080">
+      </div>
+      <div class="field">
+        <label>Тайм-аут навигации, мс</label>
+        <input type="number" id="timeoutNav" value="60000">
+      </div>
+      <div class="field">
+        <label>Тайм-аут ожидания, мс</label>
+        <input type="number" id="timeoutWait" value="5000">
+      </div>
+      <div class="field">
+        <label>Тайм-аут тяжёлых страниц, мс</label>
+        <input type="number" id="timeoutLong" value="10000">
+      </div>
+      <div class="field">
+        <label>Тайм-аут ручного прохождения CAPTCHA, сек</label>
+        <input type="number" id="captchaTimeout" value="180">
+      </div>
+      <div class="field">
+        <label>Папка для скриншотов</label>
+        <input type="text" id="screenshotsDir" value="screenshots">
+      </div>
+      <div class="field">
+        <label>User-Agent</label>
+        <input type="text" id="userAgent" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36">
+      </div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="headless">
+      <label style="margin:0" for="headless">Запускать браузер без GUI (headless)</label>
+    </div>
+  </section>
+
+  <!-- ── Массовая загрузка списка ИНН ───────────────────────── -->
+  <section>
+    <h2>3. Массовая загрузка списка ИНН</h2>
+    <p class="hint">
+      Файл .txt или .csv. Один контрагент — одна строка. Поддерживаются форматы:<br>
+      • только ИНН: <code>1616019804</code><br>
+      • ИНН и данные через запятую: <code>1616019804, ООО «Ромашка», Иванов И.И., г. Казань, ул. Ленина, 1</code><br>
+      (порядок колонок: ИНН, название компании, исполнитель, адрес)
+    </p>
+    <div class="file-drop" id="bulkDrop">Перетащите сюда .txt/.csv со списком ИНН или нажмите, чтобы выбрать файл</div>
+    <input type="file" id="bulkInput" accept=".txt,.csv" style="display:none">
+    <details>
+      <summary>…или вставьте список вручную</summary>
+      <div class="field" style="margin-top:10px">
+        <textarea id="bulkText" rows="5" placeholder="1616019804&#10;7707083893, ООО Пример, Иванов И.И., г. Москва"></textarea>
+      </div>
+      <button class="secondary small" id="bulkTextBtn" type="button">Добавить из текста</button>
+    </details>
+    <div class="status" id="bulkStatus"></div>
+  </section>
+
+  <!-- ── Список компаний ─────────────────────────────────────── -->
+  <section>
+    <h2>4. Компании для проверки <span class="badge" id="countBadge">0</span></h2>
+    <p class="hint">Добавляйте по одной вручную или редактируйте загруженный список прямо в таблице.</p>
+
+    <div class="grid">
+      <div class="field"><label>ИНН *</label><input type="text" id="fInn"></div>
+      <div class="field"><label>Название компании</label><input type="text" id="fName"></div>
+      <div class="field"><label>Исполнитель</label><input type="text" id="fExecutor"></div>
+      <div class="field"><label>Юридический адрес</label><input type="text" id="fAddress"></div>
+    </div>
+    <details>
+      <summary>Дополнительно (для разделов проверки физлица/паспорта)</summary>
+      <div class="grid" style="margin-top:10px">
+        <div class="field"><label>ФИО руководителя</label><input type="text" id="fDirector"></div>
+        <div class="field"><label>ФИО физлица</label><input type="text" id="fPersonFio"></div>
+        <div class="field"><label>ИНН физлица</label><input type="text" id="fPersonInn"></div>
+        <div class="field"><label>Серия паспорта</label><input type="text" id="fPassSeries" value="4509"></div>
+        <div class="field"><label>Номер паспорта</label><input type="text" id="fPassNumber" value="123456"></div>
+      </div>
+    </details>
+    <button id="addCompanyBtn" type="button" style="margin-top:10px">+ Добавить компанию</button>
+    <div class="status" id="addStatus"></div>
+
+    <table>
+      <thead>
+        <tr><th>ИНН</th><th>Компания</th><th>Исполнитель</th><th>Адрес</th><th></th></tr>
+      </thead>
+      <tbody id="companiesBody"></tbody>
+    </table>
+    <div class="empty" id="emptyMsg">Пока не добавлено ни одной компании.</div>
+  </section>
+
+  <div class="footer-actions">
+    <button class="secondary" id="clearBtn" type="button">Очистить всё</button>
+    <button id="downloadBtn" type="button">⬇ Скачать config.json</button>
+  </div>
+
+</main>
+
+<script>
+let companies = [];
+
+// ── утилиты ──────────────────────────────────────────────────
+function setStatus(el, msg, ok){
+  el.textContent = msg;
+  el.className = "status " + (ok ? "ok" : "err");
+}
+
+function normInn(v){ return (v || "").toString().trim(); }
+
+function upsertCompany(c){
+  c.inn = normInn(c.inn);
+  if(!c.inn) return false;
+  const idx = companies.findIndex(x => x.inn === c.inn);
+  if(idx >= 0){
+    companies[idx] = { ...companies[idx], ...c };
+  } else {
+    companies.push({
+      inn: c.inn,
+      company_name: c.company_name || "",
+      executor_name: c.executor_name || "",
+      address: c.address || "",
+      director_fio: c.director_fio || "",
+      person_fio: c.person_fio || "",
+      person_inn: c.person_inn || "",
+      passport_series: c.passport_series || "",
+      passport_number: c.passport_number || "",
+    });
+  }
+  return true;
+}
+
+function renderTable(){
+  const body = document.getElementById("companiesBody");
+  const empty = document.getElementById("emptyMsg");
+  document.getElementById("countBadge").textContent = companies.length;
+  body.innerHTML = "";
+  if(companies.length === 0){
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  companies.forEach((c, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input class="inline-edit" data-i="${i}" data-f="inn" value="${escapeAttr(c.inn)}"></td>
+      <td><input class="inline-edit" data-i="${i}" data-f="company_name" value="${escapeAttr(c.company_name)}"></td>
+      <td><input class="inline-edit" data-i="${i}" data-f="executor_name" value="${escapeAttr(c.executor_name)}"></td>
+      <td><input class="inline-edit" data-i="${i}" data-f="address" value="${escapeAttr(c.address)}"></td>
+      <td><button class="danger" data-del="${i}">Удалить</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll(".inline-edit").forEach(inp => {
+    inp.addEventListener("change", e => {
+      const i = +e.target.dataset.i, f = e.target.dataset.f;
+      companies[i][f] = e.target.value;
+      if(f === "inn") renderTable(); // индексы данных, но badge всё равно пересчитаем
+    });
+  });
+  body.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      companies.splice(+e.target.dataset.del, 1);
+      renderTable();
+    });
+  });
+}
+
+function escapeAttr(s){
+  return (s || "").toString().replace(/"/g, "&quot;");
+}
+
+// ── добавление одной компании вручную ───────────────────────
+document.getElementById("addCompanyBtn").addEventListener("click", () => {
+  const status = document.getElementById("addStatus");
+  const c = {
+    inn: document.getElementById("fInn").value,
+    company_name: document.getElementById("fName").value,
+    executor_name: document.getElementById("fExecutor").value,
+    address: document.getElementById("fAddress").value,
+    director_fio: document.getElementById("fDirector").value,
+    person_fio: document.getElementById("fPersonFio").value,
+    person_inn: document.getElementById("fPersonInn").value,
+    passport_series: document.getElementById("fPassSeries").value,
+    passport_number: document.getElementById("fPassNumber").value,
+  };
+  if(!normInn(c.inn)){
+    setStatus(status, "Укажите ИНН.", false);
+    return;
+  }
+  const existed = companies.some(x => x.inn === normInn(c.inn));
+  upsertCompany(c);
+  renderTable();
+  setStatus(status, existed ? "Запись обновлена." : "Компания добавлена.", true);
+  ["fInn","fName","fExecutor","fAddress","fDirector","fPersonFio","fPersonInn"].forEach(id => document.getElementById(id).value = "");
+});
+
+// ── массовая загрузка из файла/текста ───────────────────────
+function parseBulkLine(line){
+  line = line.trim();
+  if(!line) return null;
+  if(line.includes(",")){
+    const parts = line.split(",").map(s => s.trim());
+    return {
+      inn: parts[0] || "",
+      company_name: parts[1] || "",
+      executor_name: parts[2] || "",
+      address: parts[3] || "",
+    };
+  }
+  return { inn: line };
+}
+
+function processBulkText(text){
+  const lines = text.split(/\r?\n/);
+  let added = 0, skipped = 0;
+  lines.forEach(line => {
+    const c = parseBulkLine(line);
+    if(!c) return;
+    if(normInn(c.inn)){ upsertCompany(c); added++; }
+    else skipped++;
+  });
+  renderTable();
+  setStatus(document.getElementById("bulkStatus"),
+    `Обработано строк: ${lines.length}. Добавлено/обновлено: ${added}${skipped ? `, пропущено пустых: ${skipped}` : ""}.`,
+    true);
+}
+
+document.getElementById("bulkTextBtn").addEventListener("click", () => {
+  const text = document.getElementById("bulkText").value;
+  if(!text.trim()){
+    setStatus(document.getElementById("bulkStatus"), "Вставьте хотя бы одну строку.", false);
+    return;
+  }
+  processBulkText(text);
+  document.getElementById("bulkText").value = "";
+});
+
+function wireDropZone(dropId, inputId, onFile){
+  const drop = document.getElementById(dropId);
+  const input = document.getElementById(inputId);
+  drop.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => { if(input.files[0]) onFile(input.files[0]); });
+  ["dragover","dragenter"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("drag"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("drag"); }));
+  drop.addEventListener("drop", e => { if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+}
+
+wireDropZone("bulkDrop", "bulkInput", file => {
+  const reader = new FileReader();
+  reader.onload = () => processBulkText(reader.result);
+  reader.onerror = () => setStatus(document.getElementById("bulkStatus"), "Не удалось прочитать файл.", false);
+  reader.readAsText(file, "utf-8");
+});
+
+// ── загрузка существующего config.json ──────────────────────
+wireDropZone("loadDrop", "loadInput", file => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const status = document.getElementById("loadStatus");
+    try {
+      const data = JSON.parse(reader.result);
+      if(data.browser){
+        document.getElementById("vwWidth").value = data.browser.viewport?.width ?? 1920;
+        document.getElementById("vwHeight").value = data.browser.viewport?.height ?? 1080;
+        document.getElementById("userAgent").value = data.browser.user_agent ?? "";
+        document.getElementById("headless").checked = !!data.browser.headless;
+      }
+      if(data.timeouts){
+        document.getElementById("timeoutNav").value = data.timeouts.nav_ms ?? 60000;
+        document.getElementById("timeoutWait").value = data.timeouts.wait_ms ?? 5000;
+        document.getElementById("timeoutLong").value = data.timeouts.long_ms ?? 10000;
+      }
+      document.getElementById("screenshotsDir").value = data.screenshots_dir ?? "screenshots";
+      document.getElementById("captchaTimeout").value = data.manual_captcha_timeout_sec ?? 180;
+
+      companies = Array.isArray(data.companies) ? data.companies.map(c => ({...c})) : [];
+      renderTable();
+      setStatus(status, `Загружено компаний: ${companies.length}.`, true);
+    } catch(e){
+      setStatus(status, "Ошибка: файл не похож на корректный JSON.", false);
+    }
+  };
+  reader.readAsText(file, "utf-8");
+});
+
+// ── очистка ──────────────────────────────────────────────────
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if(!confirm("Удалить весь текущий список компаний?")) return;
+  companies = [];
+  renderTable();
+});
+
+// ── скачивание config.json ──────────────────────────────────
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  if(companies.length === 0){
+    alert("Список компаний пуст — добавьте хотя бы одну (вручную или через массовую загрузку).");
+    return;
+  }
+  const config = {
+    browser: {
+      viewport: {
+        width: +document.getElementById("vwWidth").value || 1920,
+        height: +document.getElementById("vwHeight").value || 1080,
+      },
+      user_agent: document.getElementById("userAgent").value,
+      headless: document.getElementById("headless").checked,
+    },
+    timeouts: {
+      nav_ms: +document.getElementById("timeoutNav").value || 60000,
+      wait_ms: +document.getElementById("timeoutWait").value || 5000,
+      long_ms: +document.getElementById("timeoutLong").value || 10000,
+    },
+    screenshots_dir: document.getElementById("screenshotsDir").value || "screenshots",
+    manual_captcha_timeout_sec: +document.getElementById("captchaTimeout").value || 180,
+    companies: companies,
+  };
+
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "config.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+renderTable();
+</script>
+
+</body>
+</html>
